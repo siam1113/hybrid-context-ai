@@ -1,0 +1,52 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "skipLibCheck": true,
+    "rootDir": ".",
+    "outDir": "dist",
+    "declaration": true,
+    "sourceMap": true,
+    "resolveJsonModule": true,
+    "paths": {
+      "@hybrid-context/shared-types": [
+        "./packages/shared-types/src/index.ts"
+      ],
+      "@hybrid-context/semantic-engine": [
+        "./packages/semantic-engine/src/index.ts"
+      ],
+      "@hybrid-context/dom-processor": [
+        "./packages/dom-processor/src/index.ts"
+      ],
+      "@hybrid-context/flow-engine": [
+        "./packages/flow-engine/src/index.ts"
+      ],
+      "@hybrid-context/execution-primitives": [
+        "./packages/execution-primitives/src/index.ts"
+      ],
+      "@hybrid-context/validation-engine": [
+        "./packages/validation-engine/src/index.ts"
+      ],
+      "@hybrid-context/llm-runtime": [
+        "./packages/llm-runtime/src/index.ts"
+      ]
+    }
+  },
+  "include": [
+    "apps/**/*.ts",
+    "packages/**/*.ts",
+    "tests/**/*.ts",
+    "types/**/*.d.ts"
+  ],
+  "exclude": [
+    "apps/dashboard",
+    "dist",
+    "node_modules"
+  ]
+}
