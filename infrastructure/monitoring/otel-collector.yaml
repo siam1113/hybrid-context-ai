@@ -1,0 +1,3 @@
+receivers: { otlp: { protocols: { grpc: {}, http: {} } } }
+exporters: { logging: {}, prometheus: { endpoint: "0.0.0.0:8889" } }
+service: { pipelines: { traces: { receivers: [otlp], exporters: [logging] }, metrics: { receivers: [otlp], exporters: [prometheus, logging] } } }
