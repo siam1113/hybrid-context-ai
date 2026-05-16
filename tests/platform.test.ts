@@ -4,6 +4,7 @@ import { InMemorySemanticIndex } from '../packages/semantic-engine/src/index.js'
 import { FlowMemoryStore } from '../packages/flow-engine/src/index.js';
 import { DeterministicExecutionEngine, registerCorePrimitives } from '../packages/execution-primitives/src/index.js';
 import { StaticEvidenceProvider, SemanticValidationEngine } from '../packages/validation-engine/src/index.js';
+import { createApiServer, createPlatformServices } from '../apps/api/src/index.js';
 
 const processor = new SemanticDomProcessor();
 const elements = processor.process({
@@ -12,10 +13,12 @@ const elements = processor.process({
   children: [
     { tagName: 'button', textContent: 'Compose', attributes: { 'aria-label': 'Compose' }, rect: { x: 1, y: 1, width: 90, height: 30 } },
     { tagName: 'input', attributes: { 'aria-label': 'To' }, rect: { x: 1, y: 40, width: 250, height: 30 } },
-    { tagName: 'input', attributes: { 'aria-label': 'Attach files', type: 'file' }, rect: { x: 1, y: 80, width: 250, height: 30 } },
-    { tagName: 'button', textContent: 'Send', attributes: { 'aria-label': 'Send' }, rect: { x: 1, y: 120, width: 90, height: 30 } }
+    { tagName: 'input', attributes: { 'aria-label': 'Subject' }, rect: { x: 1, y: 80, width: 250, height: 30 } },
+    { tagName: 'textarea', attributes: { 'aria-label': 'Message Body' }, rect: { x: 1, y: 120, width: 250, height: 90 } },
+    { tagName: 'input', attributes: { 'aria-label': 'Attach files', type: 'file' }, rect: { x: 1, y: 220, width: 250, height: 30 } },
+    { tagName: 'button', textContent: 'Send', attributes: { 'aria-label': 'Send' }, rect: { x: 1, y: 260, width: 90, height: 30 } }
   ]
-}, { applicationVocabulary: { compose: 'compose email', to: 'email recipient', attach: 'email attachment', send: 'send email' }, minConfidence: confidence(0.3) });
+}, { applicationVocabulary: { compose: 'compose email', to: 'email recipient', subject: 'email subject', message: 'email body', attach: 'email attachment', send: 'send email' }, minConfidence: confidence(0.3) });
 
 if (!elements.some((element) => element.businessMeaning === 'compose email')) throw new Error('compose semantic element was not extracted');
 
@@ -29,14 +32,16 @@ flows.upsert({
   nodes: [
     { id: 'compose', kind: 'primitive', name: 'Open compose', primitive: 'open_compose_modal', targetBusinessMeaning: 'compose email', inputs: {}, assertions: [] },
     { id: 'recipient', kind: 'primitive', name: 'Recipient', primitive: 'fill_email_recipient', targetBusinessMeaning: 'email recipient', inputs: { recipient: 'qa@example.com' }, assertions: [] },
+    { id: 'subject', kind: 'primitive', name: 'Subject', primitive: 'fill_email_subject', targetBusinessMeaning: 'email subject', inputs: { subject: 'QA report' }, assertions: [] },
+    { id: 'body', kind: 'primitive', name: 'Body', primitive: 'fill_email_body', targetBusinessMeaning: 'email body', inputs: { body: 'Attached report.' }, assertions: [] },
     { id: 'attach', kind: 'primitive', name: 'Attachment', primitive: 'upload_attachment', targetBusinessMeaning: 'email attachment', inputs: { filePath: '/tmp/report.pdf' }, assertions: [] },
     { id: 'send', kind: 'primitive', name: 'Send', primitive: 'submit_form', targetBusinessMeaning: 'send email', inputs: {}, assertions: [{ id: 'sent', businessEvent: 'email_sent_successfully', requiredConfidence: confidence(0.7), evidenceSignals: [{ kind: 'semantic_element', name: 'sent_toast', expected: 'message sent', weight: confidence(1) }] }] }
   ],
-  edges: [{ from: 'compose', to: 'recipient' }, { from: 'recipient', to: 'attach' }, { from: 'attach', to: 'send' }]
+  edges: [{ from: 'compose', to: 'recipient' }, { from: 'recipient', to: 'subject' }, { from: 'subject', to: 'body' }, { from: 'body', to: 'attach' }, { from: 'attach', to: 'send' }]
 });
 
 const plan = flows.createPlan('gmail', 'Send email with attachment in Gmail');
-if (plan.nodes.length !== 4) throw new Error('plan was not topologically built');
+if (plan.nodes.length !== 6) throw new Error('plan was not topologically built');
 
 const actions: string[] = [];
 const executor = new DeterministicExecutionEngine();
@@ -56,3 +61,13 @@ const events = await executor.execute(plan, {
 });
 if (!events.some((event) => event.type === 'completed')) throw new Error('execution did not complete');
 if (!actions.some((action) => action.startsWith('file:'))) throw new Error('attachment primitive was not executed');
+
+const services = createPlatformServices();
+if (services.flows.list('gmail').length !== 1) throw new Error('demo flow was not seeded');
+if (services.semantic.list('gmail').length !== 1) throw new Error('demo semantic map was not seeded');
+
+const api = createApiServer();
+const result = await api.executeFlow({ applicationId: 'gmail', intent: 'Email a report with a file attached', inputs: { recipient: { recipient: 'ops@example.com' }, attach: { filePath: '/tmp/ops.pdf' } } });
+if (!result.events.some((event) => event.type === 'completed')) throw new Error('api execution did not complete');
+if (!result.browserActions.some((action) => action === 'fill:[aria-label="To recipients"]:ops@example.com')) throw new Error('api did not apply recipient input override');
+if (!result.browserActions.some((action) => action === 'file:[aria-label="Attach files"]:/tmp/ops.pdf')) throw new Error('api did not apply attachment input override');
