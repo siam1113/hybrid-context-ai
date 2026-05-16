@@ -8,3 +8,6 @@ declare const Buffer: {
   from(value: unknown): { toString(encoding?: string): string };
   concat(chunks: unknown[]): { toString(encoding?: string): string };
 };
+
+declare const process: { env: Record<string, string | undefined> };
+declare const console: { log(message?: unknown, ...optionalParams: unknown[]): void };

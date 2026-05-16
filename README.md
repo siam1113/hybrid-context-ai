@@ -85,7 +85,7 @@ npm install
 npm run check
 ```
 
-`npm run check` runs the complete repository validation currently available at the root: TypeScript compilation followed by the Node test suite.
+`npm run check` runs the complete repository validation at the root: TypeScript compilation followed by the Node test suite. The API seeds a demo Gmail-style workflow so the end-to-end compile → plan → execute → validate path works immediately after build.
 
 ## Install dependencies
 
@@ -203,42 +203,51 @@ Build the dashboard for production:
 npm run build --workspace @hybrid-context/dashboard
 ```
 
-The dashboard currently provides the UI shell for live execution monitoring, semantic UI exploration, flow visualization, memory graph inspection, execution replay, flaky element analysis, and selector confidence views. Wire these panels to API endpoints as backend capabilities are expanded.
+The dashboard provides the operator UI shell for live execution monitoring, semantic UI exploration, flow visualization, memory graph inspection, execution replay, flaky element analysis, and selector confidence views. It is designed around the API endpoints listed below.
 
 ## API service usage
 
-`apps/api` exports an `ApiServer` class. It currently provides these routes when instantiated by a host process:
+`apps/api` exports `createApiServer()` and `createPlatformServices()` for fully wired in-memory local operation. The default server seeds a Gmail-style semantic map and reusable attachment flow, then wires together the context compiler, semantic index, flow store, planner, deterministic executor, in-memory browser adapter, and semantic validation engine.
+
+Build and start the API from the repository root:
+
+```bash
+npm run build
+PORT=8080 npm run start:api
+```
+
+Available routes:
 
 | Method | Path | Description |
 | --- | --- | --- |
 | `GET` | `/health` | Returns `{ "ok": true }` for service health checks. |
-| `POST` | `/flows/execute` | Creates an execution plan from `{ "applicationId": "...", "intent": "..." }`. |
-| `GET` | `/semantic/query?applicationId=...&q=...` | Queries semantic memory by business meaning. |
+| `GET` | `/flows?applicationId=gmail` | Lists registered flow graphs. |
+| `POST` | `/flows` | Registers or replaces a flow graph after DAG validation. |
+| `POST` | `/plans` | Creates a deterministic execution plan from `{ "applicationId", "intent", "inputs" }`. |
+| `POST` | `/flows/execute` | Plans and executes an intent end to end, returning the plan, trace events, and browser-adapter actions. |
+| `POST` | `/semantic/compile` | Compiles a raw DOM snapshot into a `SemanticUIMap` and stores it in semantic memory. |
+| `GET` | `/semantic/maps?applicationId=gmail` | Lists compiled semantic UI maps. |
+| `GET` | `/semantic/query?applicationId=gmail&q=email%20recipient` | Queries semantic memory by business meaning. |
 
-This repository does not yet define a root `npm start` script for the API. To run it as a standalone service, add a small bootstrap file that creates the required `FlowMemoryStore` and `InMemorySemanticIndex`, instantiates `ApiServer`, and calls `listen(port)`.
-
-Example bootstrap pattern:
-
-```ts
-import { ApiServer } from './apps/api/src/index.js';
-import { FlowMemoryStore } from './packages/flow-engine/src/index.js';
-import { InMemorySemanticIndex } from './packages/semantic-engine/src/index.js';
-
-const api = new ApiServer(new FlowMemoryStore(), new InMemorySemanticIndex());
-api.listen(Number(process.env.PORT ?? 8080));
-```
-
-After adding a bootstrap entry point and building it, you can test the API shape with commands such as:
+Example local API calls:
 
 ```bash
 curl http://localhost:8080/health
 
+curl 'http://localhost:8080/flows?applicationId=gmail'
+
+curl -X POST http://localhost:8080/plans \
+  -H 'content-type: application/json' \
+  -d '{"applicationId":"gmail","intent":"Email a report with a file attached","inputs":{"recipient":{"recipient":"ops@example.com"},"attach":{"filePath":"/tmp/ops.pdf"}}}'
+
 curl -X POST http://localhost:8080/flows/execute \
   -H 'content-type: application/json' \
-  -d '{"applicationId":"gmail","intent":"Send email with attachment in Gmail"}'
+  -d '{"applicationId":"gmail","intent":"Email a report with a file attached","inputs":{"recipient":{"recipient":"ops@example.com"},"attach":{"filePath":"/tmp/ops.pdf"}}}'
 
 curl 'http://localhost:8080/semantic/query?applicationId=gmail&q=email%20recipient'
 ```
+
+The default execution uses an `InMemoryBrowserDriver`, so it is deterministic and safe for local tests. Replace that adapter at the app boundary when connecting to Playwright or another browser runtime.
 
 ## Core usage workflow
 
@@ -256,6 +265,7 @@ A typical platform flow looks like this:
 
 3. **Plan from user intent**
    - Use `PlannerService` to match an intent to a known flow.
+   - Pass optional node or primitive input overrides such as recipient, subject, body, or attachment path.
    - Escalate to `SelectiveLlmPlanner` only when compiled memory cannot produce a deterministic plan.
 
 4. **Execute deterministically**
@@ -283,6 +293,7 @@ The integration smoke test in `tests/platform.test.ts` is the best executable re
 - Registering deterministic primitives.
 - Running execution with a mock browser adapter.
 - Validating a semantic business event.
+- Exercising the fully wired API service with seeded demo data and input overrides.
 
 To run the example path:
 
@@ -321,7 +332,7 @@ npm run check
 | `apps/planner` | Selects known flows or escalates to LLM planning | Keep deterministic flow selection as the default path. |
 | `apps/executor` | Creates a primitive-enabled execution engine | Integrate Playwright and runtime adapters here. |
 | `apps/recovery-agent` | Ranks replacement elements and promotes selectors | Add historical-pattern and component-neighborhood signals here. |
-| `apps/api` | Exposes HTTP endpoints | Add bootstrap, authentication, request validation, and persistence-backed handlers here. |
+| `apps/api` | Exposes HTTP endpoints and the default in-memory platform wiring | Add authentication, request validation, and persistence-backed handlers here. |
 | `apps/dashboard` | Provides the operator UI | Connect panels to API endpoints and live telemetry streams. |
 
 ### TypeScript conventions
@@ -446,6 +457,7 @@ Before production deployment, add or harden:
 | `npm run build` | Compile root TypeScript sources to `dist/`. |
 | `npm test` | Run compiled Node tests from `dist/tests/*.test.js`. |
 | `npm run check` | Build and run tests. |
+| `npm run start:api` | Start the seeded local API from compiled `dist/` output. |
 | `npm run dev --workspace @hybrid-context/dashboard` | Start the Next.js dashboard in development mode. |
 | `npm run build --workspace @hybrid-context/dashboard` | Build the dashboard. |
 | `docker compose -f infrastructure/docker/docker-compose.yml up -d` | Start local infrastructure. |
@@ -456,4 +468,4 @@ Before production deployment, add or harden:
 
 ## Current maturity
 
-This repository is a foundation and reference implementation, not a fully wired production system. The core packages, app service classes, dashboard shell, docs, and smoke test demonstrate the architecture and intended development direction. Production use requires persistence adapters, API bootstrap, authentication, browser/runtime integration, LLM provider configuration, CI/CD, and operational hardening.
+This repository is now a fully wired in-memory reference implementation for local end-to-end operation: demo context compilation, semantic memory, flow registration, intent planning, deterministic primitive execution, semantic validation, API routes, dashboard shell, docs, and smoke tests are connected. Production use still requires durable persistence adapters, authentication, a real browser/runtime adapter, LLM provider configuration, CI/CD, and operational hardening.

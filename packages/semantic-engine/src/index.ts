@@ -8,6 +8,12 @@ export class InMemorySemanticIndex {
 
   upsert(map: SemanticUIMap): void { this.maps.set(`${map.applicationId}:${map.pageId}`, map); }
 
+  list(applicationId?: string): readonly SemanticUIMap[] {
+    return [...this.maps.values()].filter((map) => !applicationId || map.applicationId === applicationId);
+  }
+
+  get(applicationId: string, pageId: string): SemanticUIMap | undefined { return this.maps.get(`${applicationId}:${pageId}`); }
+
   query(applicationId: string, query: SemanticQuery): readonly SemanticMatch[] {
     const matches: SemanticMatch[] = [];
     for (const map of this.maps.values()) {

@@ -31,6 +31,13 @@ The platform is application operational intelligence infrastructure, not a brows
 9. **Episodic Learning System** records failures, retries, flaky elements, timings, and recovery patterns.
 10. **API + Dashboard Layer** exposes flow execution, semantic memory, history, UI graph, business graph, replay, and compiler job controls.
 
+
+## Local reference wiring
+
+The repository includes a fully wired in-memory reference path for local development. `createPlatformServices()` constructs a flow store, semantic index, context compiler, planner, primitive-enabled executor, in-memory browser adapter, and logger. By default it seeds a Gmail-style DOM snapshot and `gmail_send_attachment` flow. `createApiServer()` exposes that wiring through health, flow registration/listing, plan creation, semantic compilation/querying, and end-to-end execution endpoints.
+
+This local wiring is intentionally adapter-oriented: package logic remains deterministic and framework-light, while apps own orchestration and runtime adapters. Production deployments should replace in-memory storage and browser adapters with persistence, queues, Playwright or equivalent browser execution, and telemetry exporters.
+
 ## Data stores
 
 - PostgreSQL: plans, executions, assertions, audit records.
