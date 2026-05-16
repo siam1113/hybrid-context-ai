@@ -1,3 +1,82 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+body {
+  margin: 0;
+  background: #020617;
+}
+
+.panel {
+  border: 1px solid rgba(51, 65, 85, 0.9);
+  border-radius: 1.5rem;
+  background: rgba(15, 23, 42, 0.84);
+  padding: 1.5rem;
+  box-shadow: 0 24px 80px rgba(2, 6, 23, 0.35);
+}
+
+.eyebrow {
+  color: #67e8f9;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+}
+
+.section-title {
+  margin-top: 0.35rem;
+  color: #f8fafc;
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+.field {
+  width: 100%;
+  border: 1px solid rgba(71, 85, 105, 0.85);
+  border-radius: 0.9rem;
+  background: rgba(2, 6, 23, 0.72);
+  color: #f8fafc;
+  outline: none;
+  padding: 0.8rem 0.95rem;
+}
+
+.field:focus {
+  border-color: #22d3ee;
+  box-shadow: 0 0 0 3px rgba(34, 211, 238, 0.16);
+}
+
+.field::placeholder {
+  color: #64748b;
+}
+
+.primary-button,
+.secondary-button {
+  border: 0;
+  border-radius: 999px;
+  cursor: pointer;
+  font-weight: 800;
+  padding: 0.85rem 1.2rem;
+  transition: transform 0.15s ease, opacity 0.15s ease;
+}
+
+.primary-button {
+  background: linear-gradient(135deg, #22d3ee, #3b82f6);
+  color: #020617;
+}
+
+.secondary-button {
+  border: 1px solid rgba(34, 211, 238, 0.35);
+  background: rgba(8, 145, 178, 0.14);
+  color: #cffafe;
+}
+
+.primary-button:hover,
+.secondary-button:hover {
+  transform: translateY(-1px);
+}
+
+.primary-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+  transform: none;
+}

@@ -63,7 +63,21 @@ export function registerCorePrimitives(engine: DeterministicExecutionEngine): vo
     const target = context.semanticIndex.resolveTarget(context.applicationId, node.targetBusinessMeaning ?? 'send');
     await context.browser.click(bestSelector(target));
   });
+  engine.register('click_target', async (node, context) => {
+    const target = context.semanticIndex.resolveTarget(context.applicationId, node.targetBusinessMeaning ?? node.name);
+    await context.browser.click(bestSelector(target));
+  });
+  engine.register('fill_target', async (node, context) => fillTarget(node, context, String(node.inputs.value ?? node.inputs.text ?? '')));
+  engine.register('upload_file', async (node, context) => {
+    const target = context.semanticIndex.resolveTarget(context.applicationId, node.targetBusinessMeaning ?? node.name);
+    await context.browser.setInputFiles(bestSelector(target), String(node.inputs.filePath ?? node.inputs.value ?? ''));
+  });
+  engine.register('wait_for_state', async (node, context) => {
+    const stateName = String(node.inputs.stateName ?? node.targetBusinessMeaning ?? node.name);
+    await context.browser.waitForSemanticState(stateName, Number(node.inputs.timeoutMs ?? 5000));
+  });
 }
+
 
 async function fillTarget(node: FlowNode, context: PrimitiveContext, value: string): Promise<void> {
   const target = context.semanticIndex.resolveTarget(context.applicationId, node.targetBusinessMeaning ?? node.name);
