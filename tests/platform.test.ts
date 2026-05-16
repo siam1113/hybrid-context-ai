@@ -71,3 +71,34 @@ const result = await api.executeFlow({ applicationId: 'gmail', intent: 'Email a 
 if (!result.events.some((event) => event.type === 'completed')) throw new Error('api execution did not complete');
 if (!result.browserActions.some((action) => action === 'fill:[aria-label="To recipients"]:ops@example.com')) throw new Error('api did not apply recipient input override');
 if (!result.browserActions.some((action) => action === 'file:[aria-label="Attach files"]:/tmp/ops.pdf')) throw new Error('api did not apply attachment input override');
+
+const customServices = createPlatformServices({ seedDemo: false });
+const customApi = createApiServer({ seedDemo: false });
+const onboarded = await customApi.onboardApplication({
+  applicationId: 'acme_portal',
+  name: 'Acme Portal',
+  baseUrl: 'https://app.acme.test',
+  overview: 'Support portal login smoke test.',
+  elements: [
+    { label: 'Login email', type: 'input', businessMeaning: 'login email' },
+    { label: 'Password', type: 'input', businessMeaning: 'account password' },
+    { label: 'Sign in', type: 'button', businessMeaning: 'submit login' },
+    { label: 'Dashboard loaded', type: 'status', businessMeaning: 'dashboard loaded' }
+  ],
+  tests: [{
+    name: 'Agent login smoke test',
+    intent: 'Verify an agent can sign in and see the dashboard',
+    steps: [
+      { action: 'fill', target: 'login email', value: 'qa@example.com' },
+      { action: 'fill', target: 'account password', value: 'correct-horse-battery-staple' },
+      { action: 'click', target: 'submit login' },
+      { action: 'assert', target: 'dashboard loaded' }
+    ]
+  }]
+});
+if (onboarded.semanticMap.elements.length < 4) throw new Error('application overview did not compile semantic elements');
+if (onboarded.flows[0]?.nodes.length !== 4) throw new Error('application overview did not compile flow nodes');
+const customExecution = await customApi.executeFlow({ applicationId: 'acme_portal', intent: 'Verify an agent can sign in and see the dashboard' });
+if (!customExecution.events.some((event) => event.type === 'completed')) throw new Error('custom UI flow did not complete');
+if (!customExecution.browserActions.some((action) => action.includes('qa@example.com'))) throw new Error('custom UI flow did not fill provided email');
+if (customServices.flows.list().length !== 0) throw new Error('seed false services should not include demo data');
